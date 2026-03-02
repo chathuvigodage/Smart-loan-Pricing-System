@@ -1,15 +1,19 @@
 package com.chathuvi.Smart_loan_Pricing_System.services;
 
+import com.chathuvi.Smart_loan_Pricing_System.entity.LoanData;
 import com.chathuvi.Smart_loan_Pricing_System.models.request.FeedbackRequest;
 import com.chathuvi.Smart_loan_Pricing_System.models.request.LoanDetailRequest;
 import com.chathuvi.Smart_loan_Pricing_System.models.response.DefaultResponse;
+import com.chathuvi.Smart_loan_Pricing_System.repository.LoanDataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -19,10 +23,13 @@ public class LoanService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private static final String MODEL_URL = "http://127.0.0.1:8000/predict";
+    private final LoanDataRepository loanDataRepository;
 
     public DefaultResponse sendLoanDataToModel(LoanDetailRequest request) {
 
         Map<Double, Double> acceptanceMap = new HashMap<>();
+
+        LoanData loanData = saveLoanData(request);
 
         for (Double rate : request.getInterestRates()) {
 
@@ -41,18 +48,24 @@ public class LoanService {
                     Double.valueOf(response.getBody().get("acceptance_probability").toString());
 
             acceptanceMap.put(rate, acceptanceProb);
+
         }
 
         log.info("acceptance probabilities {}", acceptanceMap);
+        loanData.setAcceptanceProbs(acceptanceMap);
 
-        // 🔹 Step 2 → Expected Profit
+        // Step 2 → Expected Profit
         Map<Double, Double> expectedProfitMap = calculateExpectedProfit(request.getLoanAmount(), acceptanceMap);
-
+        loanData.setExpectedProfits(expectedProfitMap);
         log.info("Expected profits {}", expectedProfitMap);
 
-        // 🔹 Step 3 → Send to Bandit
+        // Step 3 → Send to Bandit
         Map<String, Object> banditResponse = callBandit(request, expectedProfitMap);
 
+        loanData.setContextId(banditResponse.get("context_id").toString());
+        loanData.setSelectedRate(Double.valueOf(banditResponse.get("selected_rate").toString()));
+
+        loanDataRepository.save(loanData);
 
         return new DefaultResponse(
                 "200",
@@ -159,6 +172,28 @@ public class LoanService {
                 "Success",
                 "Bandit updated successfully"
         );
+    }
+
+    public LoanData saveLoanData(LoanDetailRequest request){
+        LoanData loanData = LoanData.builder()
+                .age(request.getAge())
+                .loanDuration(request.getLoanDuration())
+                .creditScore(request.getCreditScore())
+                .educationLevel(request.getEducationLevel())
+                .annualIncome(request.getAnnualIncome())
+                .employmentStatus(request.getEmploymentStatus())
+                .interestRates(request.getInterestRates())
+                .paymentHistory(request.getPaymentHistory())
+                .savingsAccountBalance(request.getSavingsAccountBalance())
+                .totalLiabilities(request.getTotalLiabilities())
+                .numberOfOpenCreditLines(request.getNumberOfOpenCreditLines())
+                .loanAmount(request.getLoanAmount())
+                .totalDebtToIncomeRatio(request.getTotalDebtToIncomeRatio())
+                .maritalStatus(request.getMaritalStatus())
+                .build();
+
+        loanDataRepository.save(loanData);
+        return loanData;
     }
 
 
