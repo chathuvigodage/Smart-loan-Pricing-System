@@ -272,13 +272,17 @@ public class LoanService {
         int total = acceptedCount + rejectedCount;
 
         double acceptanceRate = total > 0 ? (acceptedCount * 100.0) / total : 0;
+        BigDecimal acceptanceRateRound = BigDecimal.valueOf(acceptanceRate)
+                .setScale(2, RoundingMode.DOWN);
         double rejectionRate = total > 0 ? (rejectedCount * 100.0) / total : 0;
+        BigDecimal rejectRateRound = BigDecimal.valueOf(rejectionRate)
+                .setScale(2, RoundingMode.DOWN);
 
         LoanHistoryResponse loanHistoryResponse = new LoanHistoryResponse();
         loanHistoryResponse.setLoanListResponse(loanListResponse);
         loanHistoryResponse.setNoOfApplications(String.valueOf(noOfApplications));
-        loanHistoryResponse.setAvgAcceptance(String.valueOf(acceptanceRate));
-        loanHistoryResponse.setAvgRejection(String.valueOf(rejectionRate));
+        loanHistoryResponse.setAvgAcceptance(String.valueOf(acceptanceRateRound));
+        loanHistoryResponse.setAvgRejection(String.valueOf(rejectRateRound));
 
         return new DefaultResponse("200", "Success", "Loan history fetched successfully", loanHistoryResponse);
     }
