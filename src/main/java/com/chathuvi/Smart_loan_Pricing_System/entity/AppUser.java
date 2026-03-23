@@ -13,9 +13,12 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Id
     private Long id;
-    private String name;
+    @Column(unique = true)
+    private String username;
     @Column(unique = true)
     private String email;
-    private String role;
     private String password;
+    @Enumerated(EnumType.STRING)
+    private Role role;
+    private String image;
 }

@@ -6,6 +6,7 @@ import java.util.List;
 
 @Getter
 public class LoanDetailRequest {
+    private String name;
     private Double loanAmount;
     private Double loanDuration;
     private Double totalDebtToIncomeRatio;
