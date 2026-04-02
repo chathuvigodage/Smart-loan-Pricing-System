@@ -8,6 +8,7 @@ import com.chathuvi.Smart_loan_Pricing_System.models.response.*;
 import com.chathuvi.Smart_loan_Pricing_System.repository.LoanDataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -25,8 +26,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class LoanService {
 
+    @Value("${model.service.url}")
+    private String modelUrl;
+
+    @Value("${bandit.service.url}")
+    private String banditUrl;
+
     private final RestTemplate restTemplate = new RestTemplate();
-    private static final String MODEL_URL = "http://127.0.0.1:8000/predict";
     private final LoanDataRepository loanDataRepository;
     private final ObjectMapper objectMapper;
 
@@ -53,7 +59,7 @@ public class LoanService {
                     new HttpEntity<>(payload, headers);
 
             ResponseEntity<Map> response =
-                    restTemplate.postForEntity(MODEL_URL, entity, Map.class);
+                    restTemplate.postForEntity(modelUrl + "/predict", entity, Map.class);
 
             Double acceptanceProb =
                     Double.valueOf(response.getBody().get("acceptance_probability").toString());
@@ -152,7 +158,7 @@ public class LoanService {
 
         ResponseEntity<Map> response =
                 restTemplate.postForEntity(
-                        "http://127.0.0.1:9000/bandit/select",
+                        banditUrl + "/bandit/select",
                         payload,
                         Map.class
                 );
@@ -202,7 +208,7 @@ public class LoanService {
 
         ResponseEntity<Map> response =
                 restTemplate.postForEntity(
-                        "http://127.0.0.1:9000/bandit/update",
+                        banditUrl + "/bandit/update",
                         payload,
                         Map.class
                 );
