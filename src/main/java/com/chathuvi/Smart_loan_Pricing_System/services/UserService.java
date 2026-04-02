@@ -30,7 +30,7 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final CryptoService cryptoService;
+//    private final CryptoService cryptoService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtService;
     private final AuthenticationManager authenticationManager;
