@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -58,8 +59,7 @@ public class LoanService {
             HttpEntity<Map<String, Object>> entity =
                     new HttpEntity<>(payload, headers);
 
-            ResponseEntity<Map> response =
-                    restTemplate.postForEntity(modelUrl + "/predict", entity, Map.class);
+            ResponseEntity<Map> response = callModelWithRetry(entity);
 
             Double acceptanceProb =
                     Double.valueOf(response.getBody().get("acceptance_probability").toString());
@@ -118,6 +118,52 @@ public class LoanService {
                 "Rate selected",
                 loanDataResponseList
         );
+    }
+
+    private ResponseEntity<Map> callModelWithRetry(HttpEntity<Map<String, Object>> entity) {
+        int maxAttempts = 3;
+        long delayMs = 2000;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                log.info("Calling model service attempt {}/{}", attempt, maxAttempts);
+
+                return restTemplate.postForEntity(
+                        modelUrl + "/predict",
+                        entity,
+                        Map.class
+                );
+
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                log.warn("Model service returned 429 on attempt {}/{}", attempt, maxAttempts);
+
+                if (attempt == maxAttempts) {
+                    throw e;
+                }
+
+                sleepBeforeRetry(delayMs);
+
+            } catch (Exception e) {
+                log.error("Model service call failed on attempt {}/{}: {}", attempt, maxAttempts, e.getMessage());
+
+                if (attempt == maxAttempts) {
+                    throw e;
+                }
+
+                sleepBeforeRetry(delayMs);
+            }
+        }
+
+        throw new RuntimeException("Model service call failed after retries");
+    }
+
+    private void sleepBeforeRetry(long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Retry sleep interrupted", e);
+        }
     }
 
     private Map<String, Object> buildModelPayload(LoanDetailRequest request, Double rate) {
